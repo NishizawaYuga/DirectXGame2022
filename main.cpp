@@ -52,7 +52,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	ShowWindow(hwnd, SW_SHOW);
 
 	MSG msg{}; //メッセージ
-	 
+	
+#pragma region DirectX初期化処理
 	//DirectX初期化処理　ここから
 #ifdef _DEBUG
 	//デバッグレイヤーをオンに
@@ -199,7 +200,8 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 	result = device->CreateFence(fenceval, D3D12_FENCE_FLAG_NONE, IID_PPV_ARGS(&fence));
 
-	//DirectY初期化処理　ここまで
+	//DirectX初期化処理　ここまで
+#pragma endregion
 
 	//ゲームループ
 	while (true) {
@@ -215,6 +217,64 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		}
 
 		//DirectX毎フレーム処理　ここから
+
+		//バックバッファの番号を取得
+		UINT bbIndex = swapChain->GetCurrentBackBufferIndex();
+
+		// 1. リソースバリアで書き込み可能に変更
+		D3D12_RESOURCE_BARRIER barrierDesc{};
+		barrierDesc.Transition.pResource = backBuffers[bbIndex];				//バックバッファを指定
+		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_PRESENT;		//表示状態から
+		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_RENDER_TARGET; //描画状態へ
+		commandList->ResourceBarrier(1, &barrierDesc);
+
+		// 2. 描画先の変更
+		//レンダーターゲットビューのハンドルを取得
+		D3D12_CPU_DESCRIPTOR_HANDLE rtvHandle = rtvHeap->GetCPUDescriptorHandleForHeapStart();
+		rtvHandle.ptr += bbIndex * device->GetDescriptorHandleIncrementSize(rtvHeapDesc.Type);
+		commandList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);//ここrtvHandleじゃない可能性あり
+
+		// 3. 画面クリア		 R    G     B    A
+		FLOAT clearColor[] = { -0.1f,0.25f,0.5f,0.0f };//青っぽい色
+		commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
+
+		// 4. 描画コマンドここから
+
+		// 4. 描画コマンドここまで
+
+		// 5. リソースバリアを戻す
+		barrierDesc.Transition.StateBefore = D3D12_RESOURCE_STATE_RENDER_TARGET;	//描画状態から
+		barrierDesc.Transition.StateAfter = D3D12_RESOURCE_STATE_PRESENT;			//表示状態へ
+		commandList->ResourceBarrier(1, &barrierDesc);
+
+		//命令のクローズ ※貯めておいた命令を実行する
+		result = commandList->Close();
+		assert(SUCCEEDED(result));
+		//コマンドリストの実行
+		ID3D12CommandList* commandLists[] = { commandList };
+		commandQueue->ExecuteCommandLists(1, commandLists);
+
+		//画面に表示するバッファをフリップ（裏表の入替え）
+		result = swapChain->Present(1, 0);
+		assert(SUCCEEDED(result));
+
+		//コマンドの実行完了を待つ
+		commandQueue->Signal(fence, ++fenceval);
+		if (fence->GetCompletedValue() != fenceval) {
+			HANDLE event = CreateEvent(nullptr, false, false, nullptr);
+			fence->SetEventOnCompletion(fenceval, event);
+			WaitForSingleObject(event, INFINITE);
+			CloseHandle(event);
+		}
+		
+		//キューをクリア
+		result = commandAllocator->Reset();//また違う識別子になってる
+		assert(SUCCEEDED(result));
+		//再びコマンドリストを貯める準備
+		result = commandList->RSSetViewports(commandAllocator, nullptr);
+		assert(SUCCEEDED(result));
+
+
 
 		//DirectX毎フレーム処理　ここまで
 	}
