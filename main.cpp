@@ -417,6 +417,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 
 #pragma endregion
 
+	float red = 0.1f;
 	float green = 0.5f;
 	float blue = 0.25f;
 
@@ -447,11 +448,14 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			OutputDebugStringA("Hit 0\n");	//出力ウィンドウに「Hit 0」と表示
 		}
 
+		//STEP1 色変え
 		if (key[DIK_SPACE]) {
-			blue = 0.25;
-			green = 0.5f;
+			red = 0.8f;
+			blue = 0.8f;
+			green = 0;
 		}
 		else {
+			red = 0.1f;
 			blue = 0.5;
 			green = 0.25f;
 		}
@@ -473,7 +477,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		commandList->OMSetRenderTargets(1, &rtvHandle, false, nullptr);
 
 		// 3. 画面クリア		 R    G     B    A
-		FLOAT clearColor[] = { -0.1f,green,blue,0.0f };//青っぽい色
+		FLOAT clearColor[] = { red,green,blue,0.0f };//青っぽい色
 		commandList->ClearRenderTargetView(rtvHandle, clearColor, 0, nullptr);
 
 		// 4. 描画コマンドここから
