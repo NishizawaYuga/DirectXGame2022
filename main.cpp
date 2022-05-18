@@ -232,20 +232,26 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	//DirectX初期化処理　ここまで
 #pragma endregion
 
+	float center = 0.0f;
+
 #pragma region 描画初期化処理
 	//頂点データ
 	XMFLOAT3 vertices[] = {
-		{ 0.0f,+0.4f,0.0f},	//中央上 インデックス0
-		{+0.25f,+0.07f,0.0f}, //右上 インデックス1
-		{-0.25f,+0.07f,0.0f}, //左上 インデックス2
-		{+0.15f,-0.4f,0.0f}, //右下 インデックス3
-		{-0.15f,-0.4f,0.0f}, //左下 インデックス4
+		{ center + 0.00f,center + 0.425f,0.0f},{ center + 0.09f,center + 0.4f,0.0f},{ center + 0.18f,center + 0.3f,0.0f},
+		{ center + 0.24f,center + 0.15f,0.0f},
+		{ center + 0.255f,center + 0.0f,0.0f},{ center + 0.24f,center - 0.15f,0.0f},{ center + 0.18f,center - 0.3f,0.0f},
+		{ center + 0.09f,center - 0.4f,0.0f},
+		{ center + 0.00f,center - 0.425f,0.0f},{ center - 0.09f,center - 0.4f,0.0f},{ center - 0.18f,center - 0.3f,0.0f},
+		{ center - 0.24f,center - 0.15f,0.0f},
+		{ center - 0.255f,center - 0.0f,0.0f},{ center - 0.24f,center + 0.15f,0.0f},{ center - 0.18f,center + 0.3f,0.0f},
+		{ center - 0.09f,center + 0.4f,0.0f},
+		{ center,center,0.0f},
 	};
 
 	//インデックスデータ
 	uint16_t indices[] =
 	{
-		2,1,1,4,4,0,0,3,3,2
+		0,1,16,1,2,16,2,3,16,3,4,16,4,5,16,5,6,16,6,7,16,7,8,16,8,9,16,9,10,16,10,11,16,11,12,16,12,13,16,13,14,16,14,15,16,15,0
 	};
 
 	//頂点データ全体のサイズ = 頂点データ一つ分のサイズ * 頂点データの要素数
@@ -456,9 +462,9 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	*/
 
 	//半透明合成
-	/*blenddesc.BlendOp = D3D12_BLEND_OP_ADD;				//加算
+	blenddesc.BlendOp = D3D12_BLEND_OP_ADD;				//加算
 	blenddesc.SrcBlend = D3D12_BLEND_SRC_ALPHA;			//ソースのアルファ値
-	blenddesc.DestBlend = D3D12_BLEND_SRC_ALPHA;*/		//1.0f-ソースのアルファ値
+	blenddesc.DestBlend = D3D12_BLEND_SRC_ALPHA;		//1.0f-ソースのアルファ値
 #pragma endregion
 
 	//頂点レイアウトの設定
@@ -466,7 +472,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	pipelineDesc.InputLayout.NumElements = _countof(inputLayout);
 
 	//図形の形状設定
-	pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_TRIANGLE;
+	pipelineDesc.PrimitiveTopologyType = D3D12_PRIMITIVE_TOPOLOGY_TYPE_LINE;
 
 	//その他の設定
 	pipelineDesc.NumRenderTargets = 1;	//描画対象は1つ
@@ -540,11 +546,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(result));
 
 	//値を書き込むと自動的に転送される
-	constMapMaterial->color = XMFLOAT4(1, 0, 0, 0.5f);	//RGBAで半透明の赤
-
-	float red = 1.0;
-	float green = 0.01;
-	float blue = 0;
+	constMapMaterial->color = XMFLOAT4(0, 0, 0, 0.5f);	//RGBAで半透明の赤
 
 #pragma endregion
 
@@ -574,26 +576,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		if (key[DIK_0]) {
 			OutputDebugStringA("Hit 0\n");	//出力ウィンドウに「Hit 0」と表示
 		}
-
-		if (red >= 1 && green <= 1 && blue <= 0) {
-			green += 0.01;
-		}
-		else if (red >= 1 && green >= 1 && blue < 1) {
-			blue += 0.01;
-		}
-		else if (red >= 0 && green >= 1 && blue >= 1) {
-			red -= 0.01;
-		}
-		else if (red <= 0 && green >= 0 && blue >= 1) {
-			green -= 0.01;
-		}
-		else if (red <= 0 && green <= 0 && blue >= 0) {
-			blue -= 0.01;
-		}
-		else if (red <= 1 && green <= 0 && blue <= 0) {
-			red += 0.01;
-		}
-		constMapMaterial->color = XMFLOAT4(red, green, blue, 0.5f);	//転送
 
 		//バックバッファの番号を取得
 		UINT bbIndex = swapChain->GetCurrentBackBufferIndex();
@@ -645,7 +627,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		commandList->SetGraphicsRootSignature(rootSignature);
 
 		//プリミティブ形状の設定コマンド
-		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_LINELIST);	//三角形リスト
+		commandList->IASetPrimitiveTopology(D3D_PRIMITIVE_TOPOLOGY_TRIANGLESTRIP);	//三角形リスト
 
 		//頂点バッファビューの設定コマンド
 		commandList->IASetVertexBuffers(0, 1, &vbView);
