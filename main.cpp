@@ -233,23 +233,31 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 #pragma endregion
 
 #pragma region 描画初期化処理
+	//頂点データ構造体
+	struct Vertex
+	{
+		XMFLOAT3 pos;	//xyz座標
+		XMFLOAT2 uv;	//UV座標
+	};
+
 	//頂点データ
-	XMFLOAT3 vertices[] = {
-		{-0.5f,-0.5f,0.0f},	//左下 インデックス0
-		{-0.5f,+0.5f,0.0f}, //左上 インデックス1
-		{+0.5f,-0.5f,0.0f}, //右下 インデックス2
-		{+0.5f,+0.5f,0.0f}, //右上 インデックス3
+	Vertex vertices[] = {
+		//	x	  y    z      u    v
+		{{-0.4f,-0.7f,0.0f},{0.0f,1.0f}},	//左下
+		{{-0.4f,+0.7f,0.0f},{0.0f,0.0f}},	//左上
+		{{+0.4f,-0.7f,0.0f},{1.0f,1.0f}},	//右下
+		{{+0.4f,+0.7f,0.0f},{1.0f,0.0f}},	//右上
 	};
 
 	//インデックスデータ
-	uint16_t indices[] =
+	unsigned short indices[] =
 	{
 		0,1,2,	//三角形1つ目
 		1,2,3	//三角形2つ目
 	};
 
 	//頂点データ全体のサイズ = 頂点データ一つ分のサイズ * 頂点データの要素数
-	UINT sizeVB = static_cast<UINT>(sizeof(XMFLOAT3) * _countof(vertices));
+	UINT sizeVB = static_cast<UINT>(sizeof(vertices[0]) * _countof(vertices));
 
 	//頂点バッファの設定
 	D3D12_HEAP_PROPERTIES heapProp{};		//ヒープ設定
@@ -300,7 +308,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		IID_PPV_ARGS(&indexBuff));
 
 	//GPU上のバッファに対応した仮想メモリ(メインメモリ上)を取得
-	XMFLOAT3* vertMap = nullptr;
+	Vertex* vertMap = nullptr;
 	result = vertBuff->Map(0, nullptr, (void**)&vertMap);
 	assert(SUCCEEDED(result));
 
@@ -340,7 +348,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	vbView.SizeInBytes = sizeVB;
 
 	//頂点一つ分のデータサイズ
-	vbView.StrideInBytes = sizeof(XMFLOAT3);
+	vbView.StrideInBytes = sizeof(vertices[0]);
 
 	ID3DBlob* vsBlob = nullptr;		//頂点シェーダオブジェクト
 	ID3DBlob* psBlob = nullptr;		//ピクセルシェーダオブジェクト
@@ -407,7 +415,11 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,		//入力データ種別(標準はD3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA)
 			0												//一度に描画するインスタンス数(0でよい)
 		},
-		//座標以外に 色、テクスチャUVなどを渡す場合はさらに続ける
+		{//uv座標(1行で書いた方が見やすい)
+			"TEXCOORD",0,DXGI_FORMAT_R32G32_FLOAT,0,
+			D3D12_APPEND_ALIGNED_ELEMENT,
+			D3D12_INPUT_CLASSIFICATION_PER_VERTEX_DATA,0
+		}
 	};
 
 	//グラフィックスパイプライン設定
@@ -540,11 +552,7 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 	assert(SUCCEEDED(result));
 
 	//値を書き込むと自動的に転送される
-	constMapMaterial->color = XMFLOAT4(1, 0, 0, 0.5f);	//RGBAで半透明の赤
-
-	float red = 1.0;
-	float green = 0.01;
-	float blue = 0;
+	constMapMaterial->color;	//RGBAで半透明の赤
 
 #pragma endregion
 
@@ -574,26 +582,6 @@ int WINAPI WinMain(HINSTANCE, HINSTANCE, LPSTR, int) {
 		if (key[DIK_0]) {
 			OutputDebugStringA("Hit 0\n");	//出力ウィンドウに「Hit 0」と表示
 		}
-
-		if (red >= 1 && green <= 1 && blue <= 0) {
-			green += 0.01;
-		}
-		else if (red >= 1 && green >= 1 && blue < 1) {
-			blue += 0.01;
-		}
-		else if (red >= 0 && green >= 1 && blue >= 1) {
-			red -= 0.01;
-		}
-		else if (red <= 0 && green >= 0 && blue >= 1) {
-			green -= 0.01;
-		}
-		else if (red <= 0 && green <= 0 && blue >= 0) {
-			blue -= 0.01;
-		}
-		else if (red <= 1 && green <= 0 && blue <= 0) {
-			red += 0.01;
-		}
-		constMapMaterial->color = XMFLOAT4(red, green, blue, 0.5f);	//転送
 
 		//バックバッファの番号を取得
 		UINT bbIndex = swapChain->GetCurrentBackBufferIndex();
